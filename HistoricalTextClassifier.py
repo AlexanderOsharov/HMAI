@@ -58,6 +58,7 @@ class HistoricalTextClassifier:
             Dropout(0.5),
             LSTM(64),
             Dropout(0.5),
+            Dense(64, activation='relu'),
             Dense(1, activation='sigmoid')
         ])
         self.model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
@@ -65,33 +66,18 @@ class HistoricalTextClassifier:
         self.model.save('historical_text_classifier.h5')
 
     def train_model(self):
-        self.model.fit(self.sequences, self.labels, epochs=10, batch_size=32)
+        self.model.fit(self.sequences, self.labels, epochs=30, batch_size=32)
 
     def predict(self, text):
         new_sequence = self.tokenizer.texts_to_sequences([text])
         padded_new_sequence = pad_sequences(new_sequence, maxlen=self.max_sequence_length)
         prediction = self.model.predict(padded_new_sequence)[0][0]
-        if prediction > 0.5:
-            return "historical_background"
-        else:
-            return "twaddle"
+        return "historical_background" if prediction > 0.5 else "twaddle"
 
     def update_dataset(self, text, label):
-        self.sequences.append(self.tokenizer.texts_to_sequences([text])[0])
-        self.labels.append(label)
+        new_sequence = self.tokenizer.texts_to_sequences([text])[0]
+        self.sequences = np.append(self.sequences, [new_sequence], axis=0)
+        self.labels = np.append(self.labels, label)
         self.sequences = pad_sequences(self.sequences, maxlen=self.max_sequence_length)
         self.labels = np.array(self.labels)
         self.train_model()
-
-
-# Пример использования
-# if __name__ == "__main__":
-#     classifier = HistoricalTextClassifier()
-#
-#     # Прогнозирование
-#     print(classifier.predict("В 1757 г. для размещения Университета, основанного М.В."))
-#     print(classifier.predict("Архитектурные решения."))
-#
-#     # Обновление данных и прогнозирование
-#     classifier.update_dataset("Новый исторический текст", "historical_background")
-#     print(classifier.predict("Новый исторический текст"))
